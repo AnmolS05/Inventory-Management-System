@@ -1,0 +1,27 @@
+{
+  "name": "inventory-management-system",
+  "version": "1.0.0",
+  "description": "Cloud-based inventory management system with AI-powered bill processing",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build && cd ../backend && npm run build",
+    "deploy:railway": "cd backend && railway up",
+    "deploy:vercel": "cd frontend && vercel --prod",
+    "deploy:render": "echo 'Push to GitHub - Render will auto-deploy'",
+    "logs:railway": "cd backend && railway logs",
+    "logs:vercel": "cd frontend && vercel logs"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["inventory", "management", "ai", "gemini", "react", "nodejs", "cloud", "railway", "vercel"],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/inventory-management-system"
+  }
+}
