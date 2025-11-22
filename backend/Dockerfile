@@ -1,5 +1,13 @@
 FROM node:18-alpine
 
+# Install build dependencies for sharp and tesseract
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    tesseract-ocr \
+    tesseract-ocr-data-eng
+
 WORKDIR /app
 
 # Copy package files
