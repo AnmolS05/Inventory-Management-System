@@ -7,8 +7,9 @@ class GeminiService {
     }
     
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // Use gemini-pro-vision for image analysis tasks
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
+    // Use gemini-1.5-flash for multimodal (text + image) tasks
+    // This model supports both text and image inputs
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
   }
 
   /**
