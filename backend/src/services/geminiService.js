@@ -7,8 +7,8 @@ class GeminiService {
     }
     
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // Use gemini-1.5-pro or gemini-pro for vision tasks
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    // Use gemini-pro-vision for image analysis tasks
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
   }
 
   /**
