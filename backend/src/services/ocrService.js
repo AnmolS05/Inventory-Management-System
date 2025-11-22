@@ -1,21 +1,14 @@
 const Tesseract = require('tesseract.js');
 const sharp = require('sharp');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 class OCRService {
-  constructor() {
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // Use gemini-1.5-flash-latest which is available with the latest SDK
-    this.textModel = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
-  }
-
   /**
    * Extract text from image using Tesseract OCR
    */
   async extractTextFromImage(imageBuffer) {
     try {
       console.log('📸 Starting OCR text extraction...');
-      
+
       // Preprocess image for better OCR
       const processedImage = await sharp(imageBuffer)
         .greyscale()
@@ -34,7 +27,7 @@ class OCRService {
 
       console.log('✅ OCR text extraction complete');
       console.log('📝 Extracted text length:', text.length);
-      
+
       return text;
     } catch (error) {
       console.error('❌ OCR extraction error:', error);
@@ -43,100 +36,122 @@ class OCRService {
   }
 
   /**
-   * Process bill using OCR + Gemini text analysis
+   * Parse bill text using pattern matching (no AI needed)
+   */
+  parseBillText(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    const result = {
+      vendor: '',
+      billNumber: '',
+      date: '',
+      grandTotal: 0,
+      items: []
+    };
+
+    // Extract vendor (usually first few lines)
+    result.vendor = lines[0] || 'Unknown Vendor';
+
+    // Extract bill number
+    const billMatch = text.match(/(?:invoice|bill|receipt)[\s#:]*(\w+[-\d]+)/i);
+    if (billMatch) result.billNumber = billMatch[1];
+
+    // Extract date
+    const dateMatch = text.match(/(\d{1,2}[-\/]\w{3,}[-\/]\d{2,4}|\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/);
+    if (dateMatch) result.date = dateMatch[1];
+
+    // Extract total
+    const totalMatch = text.match(/(?:total|amount|grand total)[\s:]*(?:rs\.?|₹)?\s*([\d,]+\.?\d*)/i);
+    if (totalMatch) {
+      result.grandTotal = parseFloat(totalMatch[1].replace(/,/g, ''));
+    }
+
+    // Extract items - look for patterns
+    const itemPatterns = [
+      // Pattern: Name Qty Price Total
+      /^(.+?)\s+(\d+)\s+(?:rs\.?|₹)?\s*([\d,]+\.?\d*)\s+(?:rs\.?|₹)?\s*([\d,]+\.?\d*)$/i,
+      // Pattern: Name Price x Qty = Total
+      /^(.+?)\s+(?:rs\.?|₹)?\s*([\d,]+\.?\d*)\s*x\s*(\d+)\s*=?\s*(?:rs\.?|₹)?\s*([\d,]+\.?\d*)$/i
+    ];
+
+    for (const line of lines) {
+      // Skip header lines
+      if (/^(sr|no|item|product|description|qty|quantity|rate|price|amount|total)/i.test(line)) {
+        continue;
+      }
+
+      for (const pattern of itemPatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          const [, name, qtyOrPrice, priceOrQty, total] = match;
+          
+          const qty = parseInt(qtyOrPrice) || parseInt(priceOrQty) || 1;
+          const price = parseFloat((priceOrQty || qtyOrPrice).replace(/,/g, '')) || 0;
+          const itemTotal = parseFloat(total.replace(/,/g, '')) || (qty * price);
+
+          if (name && name.length > 2) {
+            result.items.push({
+              item: name.trim(),
+              quantity: qty,
+              price: price,
+              total: itemTotal
+            });
+          }
+          break;
+        }
+      }
+    }
+
+    // If no items found, try simpler extraction
+    if (result.items.length === 0) {
+      console.log('⚠️ No items found with patterns, trying simple extraction...');
+      
+      for (const line of lines) {
+        const numbers = line.match(/[\d,]+\.?\d*/g);
+        if (numbers && numbers.length >= 2 && line.length > 5) {
+          const name = line.replace(/[\d,\.]+/g, '').trim();
+          if (name.length > 3) {
+            const price = parseFloat(numbers[0].replace(/,/g, '')) || 0;
+            const total = parseFloat(numbers[numbers.length - 1].replace(/,/g, '')) || price;
+            
+            result.items.push({
+              item: name,
+              quantity: 1,
+              price: price,
+              total: total
+            });
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Process bill using pure OCR (no AI needed)
    */
   async processBillWithOCR(imageBuffer) {
     try {
-      // Step 1: Extract text using OCR
+      // Extract text using OCR
       const extractedText = await this.extractTextFromImage(imageBuffer);
       
       if (!extractedText || extractedText.trim().length < 10) {
         throw new Error('Could not extract sufficient text from image');
       }
 
-      console.log('🤖 Analyzing extracted text with Gemini...');
+      console.log('📝 Parsing bill text...');
+      console.log('Extracted text preview:', extractedText.substring(0, 500));
 
-      // Step 2: Analyze text with Gemini
-      const prompt = `
-        Analyze this bill/invoice text and extract the following information in JSON format:
-        
-        ${extractedText}
-        
-        Extract:
-        - vendor: store/vendor name
-        - billNumber: bill/invoice number
-        - date: bill date (format: YYYY-MM-DD)
-        - grandTotal: total bill amount (number)
-        - items: array of items with:
-          - item: product name (string)
-          - quantity: number of units (number)
-          - price: unit price (number)
-          - total: total price for item (number)
-        
-        Return ONLY valid JSON in this exact format:
-        {
-          "vendor": "Store Name",
-          "billNumber": "INV-123",
-          "date": "2024-02-09",
-          "grandTotal": 2522.00,
-          "items": [
-            {
-              "item": "Product Name",
-              "quantity": 1,
-              "price": 400.00,
-              "total": 400.00
-            }
-          ]
-        }
-        
-        Important:
-        - Extract ALL items from the bill
-        - Ensure all numbers are actual numbers, not strings
-        - Use exact product names as written
-        - If date format is different, convert to YYYY-MM-DD
-        - Return empty string for missing vendor/billNumber
-      `;
+      // Parse text using pattern matching
+      const billData = this.parseBillText(extractedText);
 
-      const result = await this.textModel.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
-      // Clean and parse JSON
-      const cleanedText = text.replace(/```json\n?|\n?```/g, '').trim();
-      
-      try {
-        const parsedData = JSON.parse(cleanedText);
-        
-        // Validate structure
-        if (!parsedData.items || !Array.isArray(parsedData.items)) {
-          throw new Error('Invalid response: items array missing');
-        }
-
-        // Validate and fix each item
-        parsedData.items = parsedData.items.map((item, index) => {
-          if (!item.item) {
-            throw new Error(`Item ${index} missing name`);
-          }
-          
-          return {
-            item: item.item,
-            quantity: Number(item.quantity) || 1,
-            price: Number(item.price) || 0,
-            total: Number(item.total) || (Number(item.quantity) * Number(item.price))
-          };
-        });
-
-        // Ensure grandTotal is a number
-        parsedData.grandTotal = Number(parsedData.grandTotal) || 0;
-
-        console.log(`✅ Successfully processed bill with ${parsedData.items.length} items`);
-        return parsedData;
-
-      } catch (parseError) {
-        console.error('❌ JSON parsing error:', parseError);
-        console.error('Raw response:', text);
-        throw new Error('Failed to parse AI response');
+      if (billData.items.length === 0) {
+        throw new Error('No items could be extracted. Please ensure the image is clear.');
       }
+
+      console.log(`✅ Successfully processed bill with ${billData.items.length} items`);
+      return billData;
 
     } catch (error) {
       console.error('❌ Bill processing error:', error);
