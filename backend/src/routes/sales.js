@@ -209,9 +209,17 @@ router.post('/', [
       }
 
       // Generate PDF bill
+      // Transform items to match PDF service expectations
+      const pdfItems = validatedItems.map(vi => ({
+        name: vi.item.name,
+        quantity: vi.quantity,
+        unit_price: parseFloat(vi.unit_price),
+        total_price: parseFloat(vi.total_price)
+      }));
+      
       const billPdfUrl = await pdfService.generateCustomerBill(
         saleResult.rows[0],
-        validatedItems
+        pdfItems
       );
 
       // Update sale with PDF URL
