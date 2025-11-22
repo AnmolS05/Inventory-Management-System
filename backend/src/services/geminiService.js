@@ -7,9 +7,8 @@ class GeminiService {
     }
     
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    // Use gemini-1.5-flash for text and image analysis (supports both vision and text)
-    // gemini-1.5-flash is faster and more cost-effective than gemini-1.5-pro
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Using gemini-pro which is the stable model available in v1 API
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
   }
 
   /**
