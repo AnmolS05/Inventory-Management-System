@@ -3,6 +3,7 @@ const multer = require('multer');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../config/database');
 const geminiService = require('../services/geminiService');
+const ocrService = require('../services/ocrService');
 const s3Service = require('../services/s3Service');
 
 const router = express.Router();
@@ -254,11 +255,9 @@ router.post('/process-bill', upload.single('billImage'), async (req, res) => {
       'bills'
     );
 
-    // Process with Gemini AI
-    const billData = await geminiService.processBillImage(
-      req.file.buffer,
-      req.file.mimetype
-    );
+    // Process with OCR + Gemini AI (more reliable)
+    console.log('🔍 Using OCR + AI for bill processing...');
+    const billData = await ocrService.processBillWithOCR(req.file.buffer);
 
     // Save bill record
     const billResult = await query(`
