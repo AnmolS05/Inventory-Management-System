@@ -55,8 +55,8 @@ const Layout = ({ children }) => {
           </button>
         </div>
 
-        <nav className="mt-6 px-3">
-          <div className="space-y-1">
+        <nav className="mt-6 px-3 pb-24">
+          <div className="space-y-2">
             {navigation.map((item) => {
               const Icon = item.icon;
               return (
@@ -65,18 +65,18 @@ const Layout = ({ children }) => {
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
                   className={`
-                    group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
+                    group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors
                     ${isActive(item.href)
-                      ? 'bg-primary-100 text-primary-700 border-r-2 border-primary-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 border-l-4 border-transparent'
                     }
                   `}
                 >
                   <Icon className={`
                     mr-3 h-5 w-5 flex-shrink-0
-                    ${isActive(item.href) ? 'text-primary-700' : 'text-gray-400 group-hover:text-gray-500'}
+                    ${isActive(item.href) ? 'text-blue-700' : 'text-gray-400 group-hover:text-gray-600'}
                   `} />
-                  {item.name}
+                  <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}
@@ -84,16 +84,16 @@ const Layout = ({ children }) => {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
-                <span className="text-sm font-medium text-white">A</span>
+              <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
+                <span className="text-sm font-medium text-white">AU</span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">Admin User</p>
-              <p className="text-xs text-gray-500">admin@shop.com</p>
+            <div className="ml-3 min-w-0 flex-1">
+              <p className="text-sm font-medium text-gray-900 truncate">Admin User</p>
+              <p className="text-xs text-gray-500 truncate">admin@shop.com</p>
             </div>
           </div>
         </div>
